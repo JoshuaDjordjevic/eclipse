@@ -2,16 +2,16 @@ import pygame
 from pygame.locals import *
 
 import eclipse
-import eclipse.tile
 
 # Initialize pygame and the display window
 pygame.init()
 display = pygame.display.set_mode((1200, 700))
+screen = pygame.Surface((600, 350))
 pygame.display.set_caption("Eclipse Game Engine - World Test")
 
 # Setup Eclipse engine world
-world = eclipse.World()
-camera = eclipse.Camera()
+engine = eclipse.Engine()
+world = engine.create_new_world("world")
 
 # Force-fill a couple chunks' surfaces
 # so we can see when they're drawn
@@ -50,17 +50,18 @@ while running:
         -1 if keys_pressed[K_a] else 1 if keys_pressed[K_d] else 0,
         -1 if keys_pressed[K_w] else 1 if keys_pressed[K_s] else 0)
     camera_motion.clamp_magnitude_ip(1)
-    camera.target += camera_motion*700*dt
+    engine.camera.target += camera_motion*300*dt
 
     # Update the camera
-    camera.update(dt)
+    engine.camera.update(dt)
 
     # Render content to the display, then update the display
-    display.fill((30, 30, 30))
+    screen.fill((30, 30, 30))
     world.draw(
-        surface=display,
-        screen_bounds=pygame.Rect((0,0), (1200, 700)),
-        camera_position=camera.position)
+        surface=screen,
+        screen_bounds=pygame.Rect((0,0), (600, 350)),
+        camera_position=engine.camera.position)
+    display.blit(pygame.transform.scale(screen, (1200, 700)), (0,0))
     pygame.display.flip()
 
 # Close the pygame window and free any left over resources
