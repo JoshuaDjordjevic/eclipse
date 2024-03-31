@@ -7,7 +7,7 @@ import eclipse
 pygame.init()
 display = pygame.display.set_mode((1200, 700))
 screen = pygame.Surface((600, 350))
-pygame.display.set_caption("Eclipse Game Engine - World Test")
+pygame.display.set_caption("Eclipse Game Engine - Chunks Test")
 
 # Setup Eclipse engine world
 engine = eclipse.Engine()
