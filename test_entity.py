@@ -54,14 +54,8 @@ class Drone(eclipse.Entity):
         self.rotational_velocity = 0
         self.rotational_drag = 0.4
         self.rotational_velocity_max = 25
-        self.sprite = pygame.image.load("./assets/drone.png")
-        self.sprite.set_colorkey((0,0,0))
     
     def draw(self, surface: pygame.Surface, camera_position: ...) -> None:
-        sprite_rotated = pygame.transform.rotate(self.sprite, -math.degrees(self.rotation))
-        sprite_rotated_rect = sprite_rotated.get_rect()
-        sprite_rotated_rect.center = self.collider_rect.center
-
         # Draw direction line
         pygame.draw.line(
             surface,
@@ -72,11 +66,7 @@ class Drone(eclipse.Entity):
                 self.collider_rect.centery-camera_position.y+math.sin(self.rotation)*15 ),
             1
         )
-
-        surface.blit(sprite_rotated, (
-            sprite_rotated_rect.left-camera_position.x,
-            sprite_rotated_rect.top-camera_position.y
-        ))
+        super().draw(surface, camera_position)
 
     def on_collision(self, axis: int):
         sign = 1
@@ -102,7 +92,7 @@ e = Drone(
 e.velocity.x = 20
 e.gravity = pygame.Vector2(0, 0)
 e.restitution = 0.45
-e.slipperiness = 0.9
+e.slipperiness = 0.99
 e.drag = 1.5
 world.entities.append(e)
 
