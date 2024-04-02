@@ -6,15 +6,16 @@ from pygame.locals import *
 
 import eclipse
 import eclipse.chunk
+from eclipse.entity import drag_default, gravity_default, restitution_default, slipperiness_default
 
 # Initialize pygame and the display window
 pygame.init()
-display_scale = 3
+display_scale = 2
 display_size = (1200, 700)
 screen_size = (display_size[0]//display_scale, display_size[1]//display_scale)
 display = pygame.display.set_mode(display_size)
 screen = pygame.Surface(screen_size)
-pygame.display.set_caption("Eclipse Game Engine - Entity Test")
+pygame.display.set_caption("Eclipse Game Engine - Flying Entity Test")
 
 # Setup Eclipse engine world
 engine = eclipse.Engine()
@@ -44,12 +45,55 @@ for x in range(10):
     for y in range(10):
         chunk.set_tile(x, y, eclipse.Tile("test"))
 
+
+# Custom entity class called Drone
+class Drone(eclipse.Entity):
+    def __init__(self, world: eclipse.World, position: pygame.Vector2, collider_size: pygame.Vector2, gravity: pygame.Vector2 = ..., drag=..., restitution=..., slipperiness=...):
+        super().__init__(world, position, collider_size, gravity, drag, restitution, slipperiness)
+        self.rotation = 0.0
+        self.rotational_velocity = 0
+        self.rotational_drag = 0.4
+        self.rotational_velocity_max = 25
+    
+    def draw(self, surface: pygame.Surface, camera_position: ...) -> None:
+        # Draw direction line
+        pygame.draw.line(
+            surface,
+            (127, 255, 127),
+            (   self.collider_rect.centerx-camera_position.x,
+                self.collider_rect.centery-camera_position.y ),
+            (   self.collider_rect.centerx-camera_position.x+math.cos(self.rotation)*15,
+                self.collider_rect.centery-camera_position.y+math.sin(self.rotation)*15 ),
+            1
+        )
+        super().draw(surface, camera_position)
+
+    def on_collision(self, axis: int):
+        sign = 1
+        normal_sign = 1 if self.velocity[axis]>0 else 0
+        if normal_sign != axis: sign = -1
+        perpendicular_force = self.velocity[1-axis]
+        self.rotational_velocity += perpendicular_force * 0.05 * abs(self.velocity[axis]*0.01) * sign
+        return super().on_collision(axis)
+
+    def update(self, dt: ...):
+        super().update(dt)
+        self.rotation += self.rotational_velocity*dt
+        self.rotational_velocity -= self.rotational_velocity*self.rotational_drag*dt
+        self.rotational_velocity = min(max(self.rotational_velocity, -self.rotational_velocity_max), self.rotational_velocity_max)
+
+
 # Create an entity
-e = eclipse.Entity(
+e = Drone(
     world=world,
     position=pygame.Vector2(10, -10),
-    collider_size=pygame.Vector2(8, 8)
+    collider_size=pygame.Vector2(24, 24)
 )
+e.velocity.x = 20
+e.gravity = pygame.Vector2(0, 0)
+e.restitution = 0.45
+e.slipperiness = 0.99
+e.drag = 1.5
 world.entities.append(e)
 
 # Initialize a clock for keeping stable FPS
@@ -65,28 +109,17 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        
-        if event.type == pygame.KEYDOWN:
-            if event.key == K_w:
-                if e.is_grounded:
-                    e.velocity.y -= 200
     
     # Get the keys that are currently being held down
     keys_pressed = pygame.key.get_pressed()
     engine.camera.target = e.get_rect_position() - pygame.Vector2(screen_size[0]/2, screen_size[1]/2)
 
-    e.slipperiness_x = e.slipperiness
+    keyboard_input_vector = pygame.Vector2(
+        -1 if keys_pressed[K_a] else 1 if keys_pressed[K_d] else 0,
+        -1 if keys_pressed[K_w] else 1 if keys_pressed[K_s] else 0)
+    keyboard_input_vector.clamp_magnitude_ip(1)
 
-    acceleration = 7
-    if not e.is_grounded:
-        acceleration = 1
-
-    if keys_pressed[K_a]:
-        e.slipperiness_x = 1
-        e.velocity.x += min(0, (-120-e.velocity.x))*dt*acceleration
-    elif keys_pressed[K_d]:
-        e.slipperiness_x = 1
-        e.velocity.x += max(0, (120-e.velocity.x))*dt*acceleration
+    e.velocity += keyboard_input_vector*250*dt
 
     # Update the camera
     engine.camera.update(dt)
@@ -100,14 +133,14 @@ while running:
 
     # Spawn particles
     if keys_pressed[K_p]:
-        c = random.randint(100, 200)
+        c = random.randint(127, 255)
         particle = eclipse.Particle(
             world=world,
-            position=pygame.Vector2(e.collider_rect.center),
-            velocity=e.velocity.copy()*2 + pygame.Vector2(random.uniform(-1, 1), random.uniform(-1, 1))*50,
-            lifetime=random.uniform(12, 16),
-            colour=(c, c, c),
-            radius=random.randint(1, 4))
+            position=mouse_pos_world,
+            velocity=pygame.Vector2(random.uniform(-1, 1), random.uniform(-1, 1))*80,
+            lifetime=15.0,
+            colour=(c, 255-c, random.randint(0, 255)),
+            radius=2)
         world.particles.append(particle)
     
     # Place bricks

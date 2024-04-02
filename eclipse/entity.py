@@ -18,6 +18,8 @@ class Entity(object):
     drag:float
     restitution:float
     slipperiness:float
+    slipperiness_x:float=-1.0
+    slipperiness_y:float=1.0
 
     is_grounded:bool
 
@@ -75,7 +77,7 @@ class Entity(object):
             self.on_collision(axis=0)
             self.position.x -= self.velocity.x*dt
             self.velocity.x *= -self.restitution
-            self.velocity.y *= self.slipperiness
+            self.velocity.y *= self.slipperiness if self.slipperiness_y == -1 else self.slipperiness_y
         
         self.position.y += self.velocity.y*dt
         self.update_rect_position()
@@ -85,7 +87,7 @@ class Entity(object):
                 self.is_grounded = True
             self.position.y -= self.velocity.y*dt
             self.velocity.y *= -self.restitution
-            self.velocity.x *= self.slipperiness
+            self.velocity.x *= self.slipperiness if self.slipperiness_x == -1 else self.slipperiness_x
         
         self.update_rect_position()
 
