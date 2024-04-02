@@ -65,6 +65,33 @@ class Entity(object):
     def apply_impulse(self, impulse:pygame.Vector2):
         self.velocity += impulse
     
+    def jump(self, force:float=200.0):
+        if self.is_grounded:
+            self.apply_impulse(pygame.Vector2(0, -force))
+    
+    def move_horizontal(self,
+                        target_velocity:float,
+                        acceleration:float,
+                        dt:float):
+        """Applies some horizontal impulse to the entity
+        in order to push it to reach a target velocity,
+        provided some acceleration factor and delta-time.
+
+        This function should be called in custom update functions.
+
+        Args:
+            target_velocity (float): The velocity to reach.
+            acceleration (float): The acceleration amount.
+            dt (float): Delta time.
+        """
+        difference = target_velocity-self.velocity.x
+        if target_velocity < 0:
+            difference = min(0, difference)
+        elif target_velocity > 0:
+            difference = max(0, difference)
+        impulse_x = difference*acceleration*dt
+        self.velocity.x += impulse_x
+
     def on_collision(self, axis:int):
         ...
     
