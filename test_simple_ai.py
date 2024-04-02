@@ -78,7 +78,7 @@ class SimpleAiEntity(eclipse.Entity):
                     self.jump()
                 
                 if self.target.position.y <= self.position.y-8:
-                    if not self.world.collide_point(pygame.Vector2(self.position.x + move_x*32, self.position.y+4)):
+                    if not self.world.collide_point(pygame.Vector2(self.position.x + move_x*16, self.position.y+4)):
                         self.jump()
                         self.move_horizontal(target_velocity, 10, dt)
 

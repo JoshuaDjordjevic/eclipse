@@ -21,7 +21,12 @@ class Entity(object):
     slipperiness_x:float=-1.0
     slipperiness_y:float=1.0
 
-    is_grounded:bool
+    time_since_grounded:float
+    time_since_last_jump:float
+
+    is_grounded:bool=False
+    is_moving:bool=False
+    is_falling:bool=False
 
     def __init__(self,
                  world:"World",
@@ -50,8 +55,8 @@ class Entity(object):
         self.restitution = restitution
         self.slipperiness = slipperiness
 
-        # Queriable states
-        self.is_grounded = False
+        self.time_since_grounded = 0.0
+        self.time_since_last_jump = 0.0
     
     def update_rect_position(self):
         self.collider_rect.centerx = self.position.x
@@ -66,7 +71,9 @@ class Entity(object):
         self.velocity += impulse
     
     def jump(self, force:float=200.0):
-        if self.is_grounded:
+        if self.is_grounded and self.time_since_last_jump>0.1:
+            self.time_since_last_jump = 0.0
+            self.is_grounded = False
             self.apply_impulse(pygame.Vector2(0, -force))
     
     def move_horizontal(self,
@@ -111,15 +118,22 @@ class Entity(object):
         if self.world.collide_rect(self.collider_rect):
             self.on_collision(axis=1)
             if self.velocity.y > 0:
-                self.is_grounded = True
+                self.time_since_grounded = 0.0
             self.position.y -= self.velocity.y*dt
             self.velocity.y *= -self.restitution
             self.velocity.x *= self.slipperiness if self.slipperiness_x == -1 else self.slipperiness_x
-        
+
         self.update_rect_position()
 
         self.velocity += self.gravity*dt
         self.velocity -= self.velocity*self.drag*dt
+
+        self.time_since_grounded += dt
+        self.time_since_last_jump += dt
+
+        self.is_grounded = self.time_since_grounded < 0.1
+        self.is_moving = abs(self.velocity.x)>0.01
+        self.is_falling = self.velocity.y>0 and not self.is_grounded
 
     def draw(self,
              surface:pygame.Surface,
