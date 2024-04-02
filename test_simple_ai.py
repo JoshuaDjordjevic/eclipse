@@ -10,12 +10,12 @@ from eclipse.entity import drag_default, gravity_default, restitution_default, s
 
 # Initialize pygame and the display window
 pygame.init()
-display_scale = 0.5
+display_scale = 2
 display_size = (1200, 700)
 screen_size = (display_size[0]//display_scale, display_size[1]//display_scale)
 display = pygame.display.set_mode(display_size)
 screen = pygame.Surface(screen_size)
-pygame.display.set_caption("Eclipse Game Engine - Entity Test")
+pygame.display.set_caption("Eclipse Game Engine - Simple AI Test")
 
 # Setup Eclipse engine world
 engine = eclipse.Engine()
