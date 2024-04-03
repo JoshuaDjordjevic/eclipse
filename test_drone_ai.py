@@ -6,6 +6,7 @@ from pygame.locals import *
 
 import eclipse
 import eclipse.chunk
+from eclipse.entity import drag_default, gravity_default, restitution_default, slipperiness_default
 
 # Initialize pygame and the display window
 pygame.init()
@@ -37,12 +38,108 @@ tile_test = engine.tile_registry.register_tile(
         surface=spritesheet.get(pygame.Rect((0, 0), (16, 16)))
     )
 )
+tile_test2 = engine.tile_registry.register_tile(
+    eclipse.TileRegistryEntry(
+        identifier="test2",
+        surface=spritesheet.get(pygame.Rect((16, 0), (16, 16)))
+    )
+)
 
 # Set tiles in the world
 chunk = world.get_chunk(0, 0, True)
 for x in range(10):
     for y in range(10):
         chunk.set_tile(x, y, eclipse.Tile("test"))
+
+
+
+class EnemyDrone(eclipse.Entity):
+    sprite: pygame.Surface
+    target: t.Union[None, eclipse.Entity] = None
+
+    def __init__(self, *args, **kwargs):
+        self.sprite: pygame.Surface = kwargs.get("sprite")
+        self.sprite_rect = self.sprite.get_rect()
+        del kwargs["sprite"]
+        super().__init__(*args, **kwargs)
+        self.slipperiness = self.slipperiness_x = self.slipperiness_y = 1
+        self.restitution = 0.5
+        self.gravity = pygame.Vector2(0, 0)
+        self.drag = 0.5
+        self.reselect_hover_location()
+        self.flight_incentive = random.uniform(0.5, 1.2)
+    
+    def reselect_hover_location(self):
+        self.reselect_hover_location_in = random.uniform(5, 10)
+        self.hover_location = pygame.Vector2(
+            random.uniform(-64, 64),
+            random.uniform(-64, -80)
+        )
+    
+    def on_collision(self, axis: int):
+        self.dead = True
+    
+    def on_death(self):
+        # Spawn explosion particles
+        for _ in range(random.randint(8, 12)):
+            random_1 = random.random()
+            self.world.spawn_particle(eclipse.Particle(
+                world=self.world,
+                position=self.position.copy(),
+                velocity=self.velocity.copy()+pygame.Vector2(random.uniform(-1, 1), random.uniform(-1, 1))*25,
+                lifetime=random.uniform(3, 5),
+                colour=(int(random_1*50+50), int(random_1*50+50), int(random_1*50+50)),
+                radius=random.randint(2, 4),
+                restitution=random.uniform(0.3, 0.4),
+                slipperiness=0.4
+            ))
+        for _ in range(random.randint(8, 12)):
+            random_1 = random.random()
+            self.world.spawn_particle(eclipse.Particle(
+                world=self.world,
+                position=self.position.copy(),
+                velocity=self.velocity.copy()+pygame.Vector2(random.uniform(-1, 1), random.uniform(-1, 1))*35,
+                lifetime=random.uniform(3, 5),
+                colour=(int(random_1*50+130), int(random_1*50+130), int(random_1*50+130)),
+                radius=random.randint(2, 4),
+                gravity=pygame.Vector2(0, -50),
+                drag=random.uniform(0.4, 0.55),
+                restitution=0.0,
+                slipperiness=0.95
+            ))
+        for _ in range(random.randint(4, 6)):
+            self.world.spawn_particle(eclipse.Particle(
+                world=self.world,
+                position=self.position.copy(),
+                velocity=self.velocity.copy()+pygame.Vector2(random.uniform(-1, 1), random.uniform(-0.5, 0.5))*35,
+                lifetime=random.uniform(1, 2),
+                colour=(random.uniform(230, 250), random.uniform(165, 190), 90),
+                radius=random.randint(1, 2),
+                drag=0.3,
+                restitution=0.0,
+                slipperiness=0.95,
+                expire_on_collision=True
+            ))
+    
+    def update(self, dt:float):
+
+        # Get target position and move to it
+        if self.target is not None:
+            target_position = self.target.position + self.hover_location
+            move_distance = (target_position - self.position)*self.flight_incentive
+            move_distance.clamp_magnitude_ip(200)
+            self.accelerate_to_velocity(move_distance.x, move_distance.y, 4*self.flight_incentive, dt, False)
+        
+        self.reselect_hover_location_in -= dt
+        if self.reselect_hover_location_in < 0:
+            self.reselect_hover_location()
+
+        super().update(dt)
+    
+    def draw(self, surface:pygame.Surface, camera_position:pygame.Vector2):
+        center = pygame.Vector2(self.collider_rect.center) - camera_position
+        self.sprite_rect.center = center
+        surface.blit(self.sprite, self.sprite_rect)
 
 # Create an entity
 entity_player = eclipse.Entity(
@@ -51,6 +148,9 @@ entity_player = eclipse.Entity(
     collider_size=pygame.Vector2(14, 30)
 )
 world.entities.append(entity_player)
+
+drone_spritesheet = eclipse.Spritesheet("./assets/drone.png")
+drone_sprite = drone_spritesheet.get(pygame.Rect(0, 0, 18, 18))
 
 # Initialize a clock for keeping stable FPS
 # and reading deltatime
@@ -70,6 +170,15 @@ while running:
         
         if event.type == pygame.KEYDOWN:
             keydown_events[event.key] = 1
+
+            if event.key == pygame.K_r:
+                _ = EnemyDrone(
+                    world=world,
+                    position=pygame.Vector2(50, -10),
+                    collider_size=pygame.Vector2(14, 14),
+                    sprite=drone_sprite )
+                _.target = entity_player
+                world.entities.append(_)
     
     # Get the keys that are currently being held down
     keys_pressed = pygame.key.get_pressed()
@@ -105,8 +214,7 @@ while running:
                 mouse_pos_world.x%256,
                 mouse_pos_world.y%256)
             tile = chunk.get_tile(tile_x, tile_y)
-            if tile is None:
-                chunk.set_tile(tile_x, tile_y, eclipse.Tile("test"))
+            chunk.set_tile(tile_x, tile_y, eclipse.Tile("test" if not keys_pressed[K_2] else "test2"))
 
     # Render content to the display, then update the display
     screen.fill((30, 30, 30))

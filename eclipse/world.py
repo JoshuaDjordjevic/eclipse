@@ -117,6 +117,9 @@ class World(object):
         for entity in self.entities:
             entity.update(dt)
     
+    def spawn_particle(self, particle:Particle):
+        self.particles.append(particle)
+    
     def draw_chunks(self,
                     surface:pygame.Surface,
                     screen_bounds:pygame.Rect,
@@ -152,8 +155,18 @@ class World(object):
     def draw_entities(self,
                       surface:pygame.Surface,
                       camera_position:pygame.Vector2):
+        remove_entities = []
         for e in self.entities:
             e.draw(surface, camera_position)
+            if e.dead:
+                e.on_death()
+                e.on_despawn()
+                remove_entities.append(e)
+            elif e.despawn:
+                e.on_despawn()
+                remove_entities.append(e)
+        for e in remove_entities:
+            self.entities.remove(e)
 
     def draw_particles(self,
                        surface:pygame.Surface,

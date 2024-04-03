@@ -19,6 +19,7 @@ class Particle(object):
     drag:float
     resistution:float
     slipperiness:float
+    expire_on_collision:bool
 
     def __init__(self,
                  world:"World",
@@ -30,7 +31,8 @@ class Particle(object):
                  gravity:pygame.Vector2=gravity_default,
                  drag:float=0.2,
                  restitution:float=0.5,
-                 slipperiness:float=0.95):
+                 slipperiness:float=0.95,
+                 expire_on_collision:bool=False):
         # Important reference properties
         self.world = world
 
@@ -51,6 +53,8 @@ class Particle(object):
         self.drag = drag
         self.restitution = restitution
         self.slipperiness = slipperiness
+
+        self.expire_on_collision = expire_on_collision
     
     def update(self, dt:float):
         # Decrease lifetime by delta, and if the time
@@ -65,12 +69,16 @@ class Particle(object):
             self.position.x -= self.velocity.x*dt
             self.velocity.x *= -self.restitution
             self.velocity.y *= self.slipperiness
+            if self.expire_on_collision:
+                return False
         
         self.position.y += self.velocity.y*dt
         if self.world.collide_point(self.position):
             self.position.y -= self.velocity.y*dt
             self.velocity.y *= -self.restitution
             self.velocity.x *= self.slipperiness
+            if self.expire_on_collision:
+                return False
         
         # Update velocity
         self.velocity += self.gravity*dt

@@ -29,6 +29,9 @@ class Entity(object):
     is_moving:bool=False
     is_falling:bool=False
 
+    dead:bool=False
+    despawn:bool=False
+
     def __init__(self,
                  world:"World",
                  position:pygame.Vector2,
@@ -134,9 +137,6 @@ class Entity(object):
             x=target_velocity,
             acceleration=acceleration,
             dt=dt)
-
-    def on_collision(self, axis:int):
-        ...
     
     def update(self, dt:float):
         self.is_grounded = False
@@ -228,3 +228,14 @@ class Entity(object):
             ),
             width=2
         )
+
+    # Functions intended to be overwritten by subclasses
+
+    def on_collision(self, axis:int):
+        ...
+
+    def on_death(self):
+        ...
+
+    def on_despawn(self):
+        ...
