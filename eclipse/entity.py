@@ -82,28 +82,58 @@ class Entity(object):
         self.apply_impulse(pygame.Vector2(0, -force))
         return True
     
+    def accelerate_to_velocity(self,
+                               x:float=...,
+                               y:float=...,
+                               acceleration:float=1.0,
+                               dt:float=0.0,
+                               allow_deceleration:bool=False) -> None:
+        """Accelerates the entity to reach some provided
+        target velocity, using smooth % acceleration.
+        This means that as t->infinity, a->infinity.
+
+        If x or y are not specified, acceleration will not
+        be applied in that axis.
+
+        Args:
+            x (float, optional): X target velocity. Defaults to ....
+            y (float, optional): Y target velocity. Defaults to ....
+            acceleration (float, optional): Acceleration factor. Defaults to 1.0.
+            dt (float, optional): Deltatime. Defaults to 0.0.
+            allow_deceleration (bool, optional): Whether to allow
+            decelerating to reach the target velocity.
+            Defaults to False.
+        """
+        if x != ...:
+            difference = x-self.velocity.x
+            if not allow_deceleration:
+                if x < 0:
+                    difference = min(0, difference)
+                elif x > 0:
+                    difference = max(0, difference)
+            # TODO: Separate dt from impulse to allow
+            # capping the acceleration force, to prevent a->infinity
+            impulse_x = difference*acceleration*dt
+            self.velocity.x += impulse_x
+        if y != ...:
+            difference = y-self.velocity.y
+            if not allow_deceleration:
+                if y < 0:
+                    difference = min(0, difference)
+                elif y > 0:
+                    difference = max(0, difference)
+            impulse_y = difference*acceleration*dt
+            self.velocity.y += impulse_y
+    
     def move_horizontal(self,
                         target_velocity:float,
                         acceleration:float,
                         dt:float):
-        """Applies some horizontal impulse to the entity
-        in order to push it to reach a target velocity,
-        provided some acceleration factor and delta-time.
-
-        This function should be called in custom update functions.
-
-        Args:
-            target_velocity (float): The velocity to reach.
-            acceleration (float): The acceleration amount.
-            dt (float): Delta time.
-        """
-        difference = target_velocity-self.velocity.x
-        if target_velocity < 0:
-            difference = min(0, difference)
-        elif target_velocity > 0:
-            difference = max(0, difference)
-        impulse_x = difference*acceleration*dt
-        self.velocity.x += impulse_x
+        """Superceeded by accelerate_to_velocity"""
+        self.accelerate_to_velocity(
+            x=target_velocity,
+            acceleration=acceleration,
+            dt=dt)
 
     def on_collision(self, axis:int):
         ...
@@ -139,6 +169,50 @@ class Entity(object):
         self.is_grounded = self.lifetime-self.timer_at_grounded < 0.1
         self.is_moving = abs(self.velocity.x)>0.01
         self.is_falling = self.velocity.y>0 and not self.is_grounded
+
+    def update_movement(self,
+                         move_left:bool,
+                         move_right:bool,
+                         jump:bool,
+                         acceleration:float,
+                         acceleration_air:float,
+                         movement_speed:float,
+                         jump_force:float,
+                         dt:float):
+        """Allows this entity to move with basic
+        controls provided with speed and force configurations.
+
+        WARNING: This function has a slight quirk. It will
+        set slipperiness_x to slipperiness when no left or right
+        movement is applied. Please take note of this if you run
+        into weird issues and need to debug.
+
+        Args:
+            move_left (bool): ...
+            move_right (bool): ...
+            jump (bool): ...
+            acceleration (float): Accleration speed.
+            acceleration_air (float): Accleration speed in air.
+            movement_speed (float): Movement speed.
+            jump_force (float): Force to jump with.
+            dt (float): Deltatime.
+        """
+        self.slipperiness_x = self.slipperiness
+        move_x = 0
+        if move_left:
+            move_x = -movement_speed
+        elif move_right:
+            move_x = movement_speed
+        if move_left and move_right:
+            move_x = 0
+        if move_x != 0:
+            self.slipperiness_x = 1
+            self.accelerate_to_velocity(
+                x=move_x,
+                acceleration=acceleration if self.is_grounded else acceleration_air,
+                dt=dt,)
+        if jump:
+            self.jump(jump_force)
 
     def draw(self,
              surface:pygame.Surface,

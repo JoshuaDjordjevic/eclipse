@@ -53,39 +53,40 @@ class SimpleAiEntity(eclipse.Entity):
         self.target = None
     
     def update(self, dt:float):
-
-        move_x = 0
+        move_left = False
+        move_right = False
+        should_jump = False
 
         if self.target is not None:
-            acceleration = 7
-            if not self.is_grounded: acceleration = 1
-
-            if self.target.position.x < self.position.x: move_x = -1
-            elif self.target.position.x > self.position.x: move_x = 1
+            if abs(self.target.position.x-self.position.x) > 48:
+                if self.target.position.x < self.position.x:
+                    move_left = True
+                elif self.target.position.x > self.position.x:
+                    move_right = True
+        
+        if move_left or move_right:
+            direction = -1 if (move_left and not move_right) else (1 if not move_left else 0)
+            check_collision = pygame.Rect(
+                self.collider_rect.left + direction*32, self.collider_rect.top,
+                self.collider_rect.width, self.collider_rect.height
+            )
+            if self.world.collide_rect(check_collision) and self.target.position.y > self.position.y+8:
+                should_jump = True
             
-            if abs(self.target.position.x - self.position.x) < 48:
-                move_x = 0
-
-            target_velocity = 120*move_x
-            self.move_horizontal(target_velocity, acceleration, dt)
-            
-            if move_x != 0:
-                check_collision = pygame.Rect(
-                    self.collider_rect.left + move_x*32, self.collider_rect.top,
-                    self.collider_rect.width, self.collider_rect.height
-                )
-                if self.world.collide_rect(check_collision):
-                    self.jump()
-                
-                if self.target.position.y <= self.position.y-8:
-                    if not self.world.collide_point(pygame.Vector2(self.position.x + move_x*16, self.position.y+4)):
-                        self.jump()
-                        self.move_horizontal(target_velocity, 10, dt)
-
-        self.slipperiness_x = self.slipperiness
-        if move_x != 0:
-            self.slipperiness_x = 1
-
+            if self.target.position.y <= self.position.y-8:
+                if not self.world.collide_point(pygame.Vector2(self.position.x + direction*8, self.position.y+4)):
+                    should_jump = True
+                    self.move_horizontal(direction*50, 10, dt)
+        
+        super().update_movement(
+            move_left=move_left,
+            move_right=move_right,
+            jump=should_jump,
+            acceleration=7,
+            acceleration_air=1,
+            movement_speed=120,
+            jump_force=200,
+            dt=dt)
         super().update(dt)
 
 # Create an entity
@@ -112,32 +113,30 @@ running = True
 while running:
     dt = clock.tick(145)/1000
 
+    keydown_events = {}
+
     # Iterate over new pygame events and handle them
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         
         if event.type == pygame.KEYDOWN:
-            if event.key == K_w:
-                if entity_player.is_grounded:
-                    entity_player.apply_impulse(pygame.Vector2(0, -200))
+            keydown_events[event.key] = 1
     
     # Get the keys that are currently being held down
     keys_pressed = pygame.key.get_pressed()
     engine.camera.target = entity_player.get_rect_position() - pygame.Vector2(screen_size[0]/2, screen_size[1]/2)
 
-    entity_player.slipperiness_x = entity_player.slipperiness
-
-    acceleration = 7
-    if not entity_player.is_grounded:
-        acceleration = 1
-
-    if keys_pressed[K_a]:
-        entity_player.slipperiness_x = 1
-        entity_player.velocity.x += min(0, (-120-entity_player.velocity.x))*dt*acceleration
-    elif keys_pressed[K_d]:
-        entity_player.slipperiness_x = 1
-        entity_player.velocity.x += max(0, (120-entity_player.velocity.x))*dt*acceleration
+    entity_player.update_movement(
+        move_left=keys_pressed[K_a],
+        move_right=keys_pressed[K_d],
+        jump=keydown_events.get(K_w, 0),
+        acceleration=7,
+        acceleration_air=1,
+        movement_speed=120,
+        jump_force=200,
+        dt=dt
+    )
 
     # Update the camera
     engine.camera.update(dt)
