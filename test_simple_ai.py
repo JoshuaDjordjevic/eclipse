@@ -65,16 +65,20 @@ class SimpleAiEntity(eclipse.Entity):
                     move_right = True
         
         if move_left or move_right:
-            direction = -1 if (move_left and not move_right) else (1 if not move_left else 0)
+            direction = 0
+            if move_left and not move_right:
+                direction = -1
+            elif move_right:
+                direction = 1
             check_collision = pygame.Rect(
-                self.collider_rect.left + direction*32, self.collider_rect.top,
+                self.collider_rect.left + direction*16, self.collider_rect.top,
                 self.collider_rect.width, self.collider_rect.height
             )
-            if self.world.collide_rect(check_collision) and self.target.position.y > self.position.y+8:
+            if self.world.collide_rect(check_collision):
                 should_jump = True
             
             if self.target.position.y <= self.position.y-8:
-                if not self.world.collide_point(pygame.Vector2(self.position.x + direction*8, self.position.y+4)):
+                if not self.world.collide_point(pygame.Vector2(self.position.x + direction*12, self.position.y+4)):
                     should_jump = True
                     self.move_horizontal(direction*50, 10, dt)
         

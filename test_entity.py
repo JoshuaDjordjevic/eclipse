@@ -9,7 +9,7 @@ import eclipse.chunk
 
 # Initialize pygame and the display window
 pygame.init()
-display_scale = 3
+display_scale = 2
 display_size = (1200, 700)
 screen_size = (display_size[0]//display_scale, display_size[1]//display_scale)
 display = pygame.display.set_mode(display_size)
@@ -48,7 +48,7 @@ for x in range(10):
 e = eclipse.Entity(
     world=world,
     position=pygame.Vector2(10, -10),
-    collider_size=pygame.Vector2(8, 8)
+    collider_size=pygame.Vector2(14, 30)
 )
 world.entities.append(e)
 
@@ -61,32 +61,30 @@ running = True
 while running:
     dt = clock.tick(145)/1000
 
+    keydown_events = {}
+
     # Iterate over new pygame events and handle them
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         
         if event.type == pygame.KEYDOWN:
-            if event.key == K_w:
-                if e.is_grounded:
-                    e.velocity.y -= 200
+            keydown_events[event.key] = 1
     
     # Get the keys that are currently being held down
     keys_pressed = pygame.key.get_pressed()
     engine.camera.target = e.get_rect_position() - pygame.Vector2(screen_size[0]/2, screen_size[1]/2)
 
-    e.slipperiness_x = e.slipperiness
-
-    acceleration = 7
-    if not e.is_grounded:
-        acceleration = 1
-
-    if keys_pressed[K_a]:
-        e.slipperiness_x = 1
-        e.velocity.x += min(0, (-120-e.velocity.x))*dt*acceleration
-    elif keys_pressed[K_d]:
-        e.slipperiness_x = 1
-        e.velocity.x += max(0, (120-e.velocity.x))*dt*acceleration
+    e.update_movement(
+        move_left=keys_pressed[K_a],
+        move_right=keys_pressed[K_d],
+        jump=keydown_events.get(K_w, 0),
+        acceleration=7,
+        acceleration_air=1,
+        movement_speed=120,
+        jump_force=200,
+        dt=dt
+    )
 
     # Update the camera
     engine.camera.update(dt)
